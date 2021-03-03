@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from flask import Flask, jsonify
 from matplotlib import style
 style.use('fivethirtyeight')
-
+import datetime as dt
 
 #################################################
 # Database Setup
@@ -50,16 +50,49 @@ def welcome():
 @app.route("/api/v1.0/precipitation")
 def precipitation():
     session = Session(engine)
-    #prcp=0
-    #dates=0
-    #station=0
-    #prcp_dict = {"date":dates, "prcp":prcp,"station":station}
+    
     results=[]
+
     recent_date = session.query(Measurement.date, Measurement.prcp, Measurement.station).order_by(Measurement.date.asc()).all()
+
+    session.close()
+
     for d, p, s in recent_date:
-        prcp_dict = {"date":d, "prcp":p,"station":s}
+        prcp_dict = {"date":d,"station":s, "prcp":p}
         results.append(prcp_dict)
     return (jsonify(results))
+
+@app.route("/api/v1.0/stations")
+def stations():
+    sessions = Session(engine)
+
+    stations = list(np.ravel(sessions.query(Measurement.station).distinct(Measurement.station).all()))
+
+    sessions.close()
+
+    return(jsonify(stations))
+
+@app.route("/api/v1.0/tobs")
+def tobs():
+    session = Session(engine)
+    
+    recent_date = session.query(Measurement.date).order_by(Measurement.date.asc()).all()[-1][0]
+
+    most_active_12 = session.query(Measurement.station).\
+        filter(Measurement.date>(dt.datetime.strptime(recent_date,"%Y-%m-%d")-dt.timedelta(days=365))).\
+        group_by(Measurement.station).\
+        order_by(func.count(Measurement.station).desc()).first()[0]
+
+    most_active_tobs = session.query(Measurement.tobs,Measurement.date,Measurement.station).\
+        filter(Measurement.station == most_active_12).\
+        filter(Measurement.date>(dt.datetime.strptime(recent_date,"%Y-%m-%d")-dt.timedelta(days=365))).all()
+    session.close()
+    results = []
+
+    for t, d, s in most_active_tobs:
+        tobs_dict = {"Date": d, "Station": s, "TOBS": t}
+        results.append(tobs_dict)
+    return jsonify(results)
 
 if __name__ == '__main__':
     app.run(debug=True)
