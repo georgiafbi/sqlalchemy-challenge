@@ -94,5 +94,25 @@ def tobs():
         results.append(tobs_dict)
     return jsonify(results)
 
+@app.route("/api/v1.0/<start>")
+@app.route("/api/v1.0/<start>/<end>")
+def start_or_end(start=None, end=None):
+    session = Session(engine)
+    #TMIN, TAVG, TMAX = None
+    
+    if end == None:
+        TMIN, TAVG, TMAX = session.query(func.min(Measurement.tobs),func.avg(Measurement.tobs),func.max(Measurement.tobs)).\
+            filter(Measurement.date >(dt.datetime.strptime(start,"%Y-%m-%d"))).all()[0]
+        return jsonify([{"TMIN":TMIN, "TAVG":round(TAVG,1), "TMAX":TMAX, "Chosen Start Date":start, "Chosen End Date":end}])
+    elif end !=None:
+        TMIN, TAVG, TMAX = session.query(func.min(Measurement.tobs),func.avg(Measurement.tobs),func.max(Measurement.tobs)).\
+            filter(Measurement.date >(dt.datetime.strptime(start,"%Y-%m-%d"))).\
+            filter(Measurement.date <(dt.datetime.strptime(end,"%Y-%m-%d"))).all()[0]
+        return jsonify([{"TMIN":TMIN, "TAVG":round(TAVG,2), "TMAX":TMAX, "Chosen Start Date":start, "Chosen End Date":end}])
+    else:
+        TMIN, TAVG, TMAX = session.query(func.min(Measurement.tobs),func.avg(Measurement.tobs),func.max(Measurement.tobs)).all()[0]
+        return jsonify([{"TMIN":TMIN, "TAVG":round(TAVG,1), "TMAX":TMAX, "Chosen a <Start Date>":"/api/v1.0/<YYY-MM_DD>", "Or Chosen a <Start>/<End Date>":"/api/v1.0/<YYY-MM-DD>/<YYYY-MM-DD>"}])
+
+
 if __name__ == '__main__':
     app.run(debug=True)
