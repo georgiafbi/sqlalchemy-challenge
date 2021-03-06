@@ -52,14 +52,16 @@ def precipitation():
     session = Session(engine)
     
     prcp_results=[]
+    recent_date = session.query(Measurement.date).order_by(Measurement.date.asc()).all()[-1][0]
 
-    recent_date = session.query(Measurement.date, Measurement.prcp, Measurement.station).\
-        order_by(Measurement.date.asc()).all()
+    recent_prcp = session.query(Measurement.date, Measurement.prcp, Measurement.station).\
+        order_by(Measurement.date.asc()).\
+        filter(Measurement.date>(dt.datetime.strptime(recent_date,"%Y-%m-%d")-dt.timedelta(days=365))).all()
 
     session.close()
 
-    for d, p, s in recent_date:
-        prcp_dict = {"Date":d,"Station ID":s,"Precipitation":p}
+    for d, p, s in recent_prcp:
+        prcp_dict = {d:{"Precipitation":p},"Station ID": s}
         prcp_results.append(prcp_dict)
     return (jsonify(prcp_results))
 
@@ -104,12 +106,12 @@ def start_or_end(start=None, end=None):
     if end == None:
         TMIN, TAVG, TMAX = session.query(func.min(Measurement.tobs),func.avg(Measurement.tobs),func.max(Measurement.tobs)).\
             filter(Measurement.date >= (dt.datetime.strptime(start,"%Y-%m-%d"))).all()[0]
-        return jsonify([{"TMIN":TMIN, "TAVG":round(TAVG,1), "TMAX":TMAX, "Start Date":start, "End Date": end}])
+        return jsonify([{"TMIN":TMIN, "TAVG":round(TAVG,1), "TMAX":TMAX, "Given Start Date":start, "Given End Date": end}])
     if end !=None:
         TMIN, TAVG, TMAX = session.query(func.min(Measurement.tobs),func.avg(Measurement.tobs),func.max(Measurement.tobs)).\
             filter(Measurement.date >= (dt.datetime.strptime(start,"%Y-%m-%d"))).\
             filter(Measurement.date <= (dt.datetime.strptime(end,"%Y-%m-%d"))).all()[0]
-        return jsonify([{"TMIN":TMIN, "TAVG":round(TAVG,1), "TMAX":TMAX, "Start Date":start, "End Date":end}])
+        return jsonify([{"TMIN":TMIN, "TAVG":round(TAVG,1), "TMAX":TMAX, "Given Start Date":start, "Given End Date":end}])
     session.close()
  
 
