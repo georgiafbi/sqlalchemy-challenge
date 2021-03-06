@@ -51,26 +51,29 @@ def welcome():
 def precipitation():
     session = Session(engine)
     
-    results=[]
+    prcp_results=[]
 
-    recent_date = session.query(Measurement.date, Measurement.prcp, Measurement.station).order_by(Measurement.date.asc()).all()
+    recent_date = session.query(Measurement.date, Measurement.prcp, Measurement.station).\
+        order_by(Measurement.date.asc()).all()
 
     session.close()
 
     for d, p, s in recent_date:
-        prcp_dict = {"date":d,"station":s, "prcp":p}
-        results.append(prcp_dict)
-    return (jsonify(results))
+        prcp_dict = {"Date":d,"Station ID":s,"Precipitation":p}
+        prcp_results.append(prcp_dict)
+    return (jsonify(prcp_results))
 
 @app.route("/api/v1.0/stations")
 def stations():
-    sessions = Session(engine)
+    session = Session(engine)
+    station_results=[]
+    stations = session.query(Station.station,Station.name,Station.latitude,Station.longitude,Station.elevation).all()
+    session.close()
+    for station, name, lat, lng, el in stations:
+        station_dict = {"Station ID": station, "Station Name": name,"Latitude":lat,"Longitude":lng,"Elevation":el}
+        station_results.append(station_dict)
 
-    stations = list(np.ravel(sessions.query(Measurement.station).distinct(Measurement.station).all()))
-
-    sessions.close()
-
-    return(jsonify(stations))
+    return(jsonify(station_results))
 
 @app.route("/api/v1.0/tobs")
 def tobs():
@@ -87,12 +90,12 @@ def tobs():
         filter(Measurement.station == most_active_12).\
         filter(Measurement.date>(dt.datetime.strptime(recent_date,"%Y-%m-%d")-dt.timedelta(days=365))).all()
     session.close()
-    results = []
+    tobs_results = []
 
     for t, d, s in most_active_tobs:
-        tobs_dict = {"Date": d, "Station": s, "TOBS": t}
-        results.append(tobs_dict)
-    return jsonify(results)
+        tobs_dict = {"Date": d, "Station ID": s, "TOBS": t}
+        tobs_results.append(tobs_dict)
+    return jsonify(tobs_results)
 
 @app.route("/api/v1.0/<start>")
 @app.route("/api/v1.0/<start>/<end>")
